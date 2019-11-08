@@ -37,7 +37,6 @@ def openFile(filePath):
 
 		taskInfo = taskInfo.split()
 		taskList = [i.split() for i in taskList]
-		taskList.remove([])
 
 	return (taskInfo, taskList)
 
