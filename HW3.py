@@ -15,6 +15,8 @@ WCET_918MHz=3
 WCET_648MHz=4
 WCET_384MHz=5
 
+def calcEnergy(milliwatts, seconds):
+	return ((int(milliwatts)/1000.0)*int(seconds))
 
 def RM(taskInfo, taskList):
 	print("Hello RM")
