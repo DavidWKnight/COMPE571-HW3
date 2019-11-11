@@ -60,50 +60,56 @@ def RM(taskInfo, taskList):
 def RM_EE(taskInfo, taskList):
 	print("Hello RM EE")
 
-def EDF(taskInfo, taskList):
-	# Check for validity with schedulability test
+TASK_NAME = 0
+TASK_DEADLINE = 1
+TASK_EXEC_TIME = 2
+TASK_ACTIVE_POWER = 3
+TASK_FREQUENCY = 4
+def findEDF(taskInfo, taskList):
 	U = 0
 	for task in taskList:
-		U = U + task[WCET_1188MHz]/task[DEADLINE]
-	if (U <= 1):
-		print(f"EDF scheduler utilization of {round(U*100.0, 2)}%.")
-	else:
-		print(f"Unable to schedule EDF because the processor utilization is {round(U*100.0, 2)}%.")
-		return
+		U = U + task[TASK_EXEC_TIME]/task[DEADLINE]
+	if not (U <= 1):
+		return ""
 	
-	deadlines = [0]*int(taskInfo[NUMBER_OF_TASKS])
 	runningTasks = []
 	schedule = []
-	TIME_REMAINING=WCET_1188MHz # Always use highest frequency for EDF scheduling
 
 	for timeStep in range(int(taskInfo[TIME_TO_EXECUTE])):
 		# Check if task needs to be moved back into running tasks list
-		for i in range(len(taskList)):
-			if (timeStep % taskList[i][DEADLINE] == 0):
-				runningTasks.append([taskList[i][NAME_OF_TASK], taskList[i][DEADLINE], taskList[i][TIME_REMAINING]])
+		#print(taskList[3])
+		for task in taskList:
+			if (timeStep % task[TASK_DEADLINE] == 0):
+				runningTasks.append(task[:])
 		# Calculate deadlines
-		deadlines = [(task[DEADLINE]-task[TIME_REMAINING]) for task in runningTasks]
+		deadlines = [(task[TASK_DEADLINE]-task[TASK_EXEC_TIME]) for task in runningTasks]
 		if (deadlines == []):
 			# No tasks need to run, IDLE state
 			schedule.append(["IDLE", "IDLE", IDLE_POWER])
 		else:
 			# Find highest priorty deadline and record it
 			highestPriorityTask = deadlines.index(min(deadlines))
-			schedule.append([runningTasks[highestPriorityTask][NAME_OF_TASK], "1188", ACTIVE_POWER_1188MHz])
-			runningTasks[highestPriorityTask][TIME_REMAINING] = runningTasks[highestPriorityTask][TIME_REMAINING] - 1
+			schedule.append([runningTasks[highestPriorityTask][TASK_NAME], runningTasks[highestPriorityTask][TASK_FREQUENCY], runningTasks[highestPriorityTask][TASK_ACTIVE_POWER]])
+			runningTasks[highestPriorityTask][TASK_EXEC_TIME] = runningTasks[highestPriorityTask][TASK_EXEC_TIME] - 1
 		
 			# Remove task from running list if it has finished executing
-			if (runningTasks[highestPriorityTask][TIME_REMAINING] == 0):
+			if (runningTasks[highestPriorityTask][TASK_EXEC_TIME] <= 0):
 				del runningTasks[highestPriorityTask]
 		# Reduce deadline for tasks
-		for i in range(len(runningTasks)):
-			runningTasks[i][DEADLINE] = runningTasks[i][DEADLINE] - 1
+		for task in runningTasks:
+			task[TASK_DEADLINE] = task[TASK_DEADLINE] - 1
 			# Sanity check, should not be 0 if we passed schedulability test
-			if (runningTasks[i][DEADLINE] == 0):
-				print("Failed runtime sanity check EDF")
+			if (task[TASK_DEADLINE] == 0):
+				print("EDF: A deadline is due with no time left to complete it")
 				return
 	return condenseSchedule(schedule)
-	
+
+def EDF(taskInfo, taskList):
+	shortTaskList = []
+	for task in taskList:
+		# Assume 1188MHz fir non EE EDF
+		shortTaskList.append([task[NAME_OF_TASK], task[DEADLINE], task[WCET_1188MHz], ACTIVE_POWER_1188MHz, "1188"])
+	return findEDF(taskInfo, shortTaskList)	
 
 def EDF_EE(taskInfo, taskList):
 	print("Hello EDF EE")
