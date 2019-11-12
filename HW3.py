@@ -54,17 +54,64 @@ def condenseSchedule(schedule):
 	result += f"Total execution time: {len(schedule) - idleTime}s\n"
 	return result
 
-def RM(taskInfo, taskList):
-	print("Hello RM")
-
-def RM_EE(taskInfo, taskList):
-	print("Hello RM EE")
-
 TASK_NAME = 0
 TASK_DEADLINE = 1
 TASK_EXEC_TIME = 2
 TASK_ACTIVE_POWER = 3
 TASK_FREQUENCY = 4
+def findRM(taskInfo, taskList):
+	n=len(taskList)
+	U = 0
+	for task in taskList:
+		U = U + task[TASK_EXEC_TIME]/task[DEADLINE]
+	if not (U <= n*(2**(1/n)-1)):
+		print("RM did not pass scheduleability test")
+		return ""
+
+	runningTasks = []
+	schedule = []
+
+	for timeStep in range(int(taskInfo[TIME_TO_EXECUTE])):
+		for task in taskList:
+			if(timeStep % task[TASK_DEADLINE] == 0):
+				runningTasks.append(task[:])
+		# Calculate deadlines
+		deadlines = [(task[TASK_DEADLINE]) for task in runningTasks]
+		if (deadlines == []):
+		# No tasks need to run, IDLE state
+			schedule.append(["IDLE", "IDLE", IDLE_POWER])
+		else:
+			# Find highest priorty deadline and record it
+			highestPriorityTask = deadlines.index(min(deadlines))
+			schedule.append([runningTasks[highestPriorityTask][TASK_NAME], runningTasks[highestPriorityTask][TASK_FREQUENCY], runningTasks[highestPriorityTask][TASK_ACTIVE_POWER]])
+			runningTasks[highestPriorityTask][TASK_EXEC_TIME] = runningTasks[highestPriorityTask][TASK_EXEC_TIME] - 1
+		
+			# Remove task from running list if it has finished executing
+			if (runningTasks[highestPriorityTask][TASK_EXEC_TIME] <= 0):
+				del runningTasks[highestPriorityTask]
+		# Reduce deadline for tasks
+		for task in runningTasks:
+			task[TASK_DEADLINE] = task[TASK_DEADLINE] - 1
+			# Sanity check, should not be 0 if we passed schedulability test
+			if (task[TASK_DEADLINE] == 0):
+				print("EDF: A deadline is due with no time left to complete it")
+				return
+	return condenseSchedule(schedule)
+
+
+
+
+def RM(taskInfo, taskList):
+	shortTaskList = []
+	for task in taskList:
+		# Assume 1188MHz for RM
+		shortTaskList.append([task[NAME_OF_TASK], task[DEADLINE], task[WCET_1188MHz], ACTIVE_POWER_1188MHz, "1188"])
+	return findRM(taskInfo, shortTaskList)
+
+
+def RM_EE(taskInfo, taskList):
+	print("Hello RM EE")
+
 def findEDF(taskInfo, taskList):
 	U = 0
 	for task in taskList:
