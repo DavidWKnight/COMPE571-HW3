@@ -105,9 +105,49 @@ def RM(taskInfo, taskList):
 		shortTaskList.append([task[NAME_OF_TASK], task[DEADLINE], task[WCET_1188MHz], ACTIVE_POWER_1188MHz, "1188"])
 	return findRM(taskInfo, shortTaskList)
 
-
+POWER_STR = ["", "", "1180", "918", "648", "384"]
 def RM_EE(taskInfo, taskList):
-	print("Hello RM EE")
+	# Like most of my python scripts, this has quickly become unmaintainable
+	shortTaskList = []
+	taskWCETs = []
+	for task in taskList:
+		# Start with 1188MHz 
+		shortTaskList.append([task[NAME_OF_TASK], task[DEADLINE], task[WCET_1188MHz], ACTIVE_POWER_1188MHz, "1188"])
+		taskWCETs.append(WCET_1188MHz)
+	lastSuccess = ""
+	currentRun = findEDF(taskInfo, shortTaskList)
+	lastSuccess = currentRun
+	iteration = 0
+	while (currentRun != ""):
+		# If last iteration increased energy consumption, stop there
+		if (float(currentRun.split('\n')[-4].split(' ')[-1].rstrip('J')) > float(lastSuccess.split('\n')[-4].split(' ')[-1].rstrip('J'))):
+			break
+		iteration = iteration + 1
+		lastSuccess = currentRun
+		# Find IDLE states
+		IDLE_State_Location = 0
+		IDLE_State_Length = 0
+		currentRun = currentRun.split('\n')
+		skippedIdle = False
+		for i in range(len(currentRun)):
+			if (currentRun[i].find("IDLE") != -1): # Found an IDLE state
+				if (int(currentRun[i].split('\t')[3]) > IDLE_State_Length): # Found an IDLE state with a longer length than previous IDLE states
+					# Decremented this freqeuncy as much possible already
+					if (currentRun[i-1].split('\t')[2] == "384"):
+						continue
+					IDLE_State_Location = i - 1
+					IDLE_State_Length = int(currentRun[i].split('\t')[3])
+		
+		for i in range(len(shortTaskList)):
+			if (currentRun[IDLE_State_Location].split('\t')[1] == shortTaskList[i][TASK_NAME]):
+				# Increment to next lowest frequency
+				taskWCETs[i] = taskWCETs[i] + 1
+				shortTaskList[i][TASK_EXEC_TIME] = taskList[i][taskWCETs[i]]
+				shortTaskList[i][TASK_ACTIVE_POWER] = taskWCETs[i]
+				shortTaskList[i][TASK_FREQUENCY] = POWER_STR[taskWCETs[i]]
+				break
+		currentRun = findEDF(taskInfo, shortTaskList)
+	return lastSuccess
 
 def findEDF(taskInfo, taskList):
 	U = 0
