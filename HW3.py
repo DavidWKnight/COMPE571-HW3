@@ -16,7 +16,7 @@ WCET_648MHz=4
 WCET_384MHz=5
 
 def calcEnergy(milliwatts, seconds):
-	return ((int(milliwatts)/1000.0)*int(seconds))
+	return ((float(milliwatts)/1000.0)*float(seconds))
 
 def condenseSchedule(schedule):
 	# schedule is a list of lists containing the task the is executed at every point in time
@@ -65,7 +65,6 @@ def findRM(taskInfo, taskList):
 	for task in taskList:
 		U = U + task[TASK_EXEC_TIME]/task[DEADLINE]
 	if not (U <= n*(2**(1/n)-1)):
-		print("RM did not pass scheduleability test")
 		return ""
 
 	runningTasks = []
@@ -79,11 +78,11 @@ def findRM(taskInfo, taskList):
 		deadlines = [(task[TASK_DEADLINE]) for task in runningTasks]
 		if (deadlines == []):
 		# No tasks need to run, IDLE state
-			schedule.append(["IDLE", "IDLE", IDLE_POWER])
+			schedule.append(["IDLE", "IDLE", taskInfo[IDLE_POWER]])
 		else:
 			# Find highest priorty deadline and record it
 			highestPriorityTask = deadlines.index(min(deadlines))
-			schedule.append([runningTasks[highestPriorityTask][TASK_NAME], runningTasks[highestPriorityTask][TASK_FREQUENCY], runningTasks[highestPriorityTask][TASK_ACTIVE_POWER]])
+			schedule.append([runningTasks[highestPriorityTask][TASK_NAME], runningTasks[highestPriorityTask][TASK_FREQUENCY], taskInfo[runningTasks[highestPriorityTask][TASK_ACTIVE_POWER]]])
 			runningTasks[highestPriorityTask][TASK_EXEC_TIME] = runningTasks[highestPriorityTask][TASK_EXEC_TIME] - 1
 		
 			# Remove task from running list if it has finished executing
@@ -107,7 +106,6 @@ def RM(taskInfo, taskList):
 
 POWER_STR = ["", "", "1180", "918", "648", "384"]
 def RM_EE(taskInfo, taskList):
-	# Like most of my python scripts, this has quickly become unmaintainable
 	shortTaskList = []
 	taskWCETs = []
 	for task in taskList:
@@ -115,7 +113,7 @@ def RM_EE(taskInfo, taskList):
 		shortTaskList.append([task[NAME_OF_TASK], task[DEADLINE], task[WCET_1188MHz], ACTIVE_POWER_1188MHz, "1188"])
 		taskWCETs.append(WCET_1188MHz)
 	lastSuccess = ""
-	currentRun = findEDF(taskInfo, shortTaskList)
+	currentRun = findRM(taskInfo, shortTaskList)
 	lastSuccess = currentRun
 	iteration = 0
 	while (currentRun != ""):
@@ -146,7 +144,7 @@ def RM_EE(taskInfo, taskList):
 				shortTaskList[i][TASK_ACTIVE_POWER] = taskWCETs[i]
 				shortTaskList[i][TASK_FREQUENCY] = POWER_STR[taskWCETs[i]]
 				break
-		currentRun = findEDF(taskInfo, shortTaskList)
+		currentRun = findRM(taskInfo, shortTaskList)
 	return lastSuccess
 
 def findEDF(taskInfo, taskList):
@@ -169,11 +167,11 @@ def findEDF(taskInfo, taskList):
 		deadlines = [(task[TASK_DEADLINE]-task[TASK_EXEC_TIME]) for task in runningTasks]
 		if (deadlines == []):
 			# No tasks need to run, IDLE state
-			schedule.append(["IDLE", "IDLE", IDLE_POWER])
+			schedule.append(["IDLE", "IDLE", taskInfo[IDLE_POWER]])
 		else:
 			# Find highest priorty deadline and record it
 			highestPriorityTask = deadlines.index(min(deadlines))
-			schedule.append([runningTasks[highestPriorityTask][TASK_NAME], runningTasks[highestPriorityTask][TASK_FREQUENCY], runningTasks[highestPriorityTask][TASK_ACTIVE_POWER]])
+			schedule.append([runningTasks[highestPriorityTask][TASK_NAME], runningTasks[highestPriorityTask][TASK_FREQUENCY], taskInfo[runningTasks[highestPriorityTask][TASK_ACTIVE_POWER]]])
 			runningTasks[highestPriorityTask][TASK_EXEC_TIME] = runningTasks[highestPriorityTask][TASK_EXEC_TIME] - 1
 		
 			# Remove task from running list if it has finished executing
@@ -197,8 +195,6 @@ def EDF(taskInfo, taskList):
 
 POWER_STR = ["", "", "1180", "918", "648", "384"]
 def EDF_EE(taskInfo, taskList):
-	# Like most of my python scripts, this has quickly become unmaintainable
-
 	shortTaskList = []
 	taskWCETs = []
 	for task in taskList:
@@ -278,4 +274,7 @@ if __name__ == "__main__":
 		print("Please input valid command line parameters")
 		exit()
 	with open(outFilePath + ".out", 'w') as outFile:
-		outFile.write(output)
+		if (output == ""):
+			outFile.write("No viable schedule found.")
+		else:
+			outFile.write(output)
